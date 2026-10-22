@@ -97,7 +97,7 @@ when it expires).
 
 1. Meta AI app → your glasses → settings → **Developer Mode** on.
 2. Open Desk Pal → **Connect glasses** → approve in Meta AI.
-3. Leave "Start when I say Gigi" on; Meta AI asks once for the glasses' microphone. Allow it.
+3. Leave Settings → "Start when I say Gigi" on; Meta AI asks once for the glasses' microphone. Allow it.
 4. Try it: say "Gigi", wait for the chime, say "What's the weather?".
 
 In Developer Mode only one third-party app can be registered with Meta AI at a time.
@@ -124,7 +124,7 @@ In Developer Mode only one third-party app can be registered with Meta AI at a t
 
 3. System Settings → Privacy & Security → Accessibility → **+** → `~/.claude/deskpal/headspaces`
    (press Cmd+Shift+G to type the path).
-4. In Desk Pal, turn on "Flick head left/right to switch Spaces".
+4. In Desk Pal, Skills tab → turn on **Mac Spaces**.
 
 **Agent pager** (if you use Claude Code): Desk Pal speaks "done" / "needs you" alerts from Claude
 Code. Install `mac/deskpal-notify.py` from your desk-voice repo as its `README.md` describes, pointed at

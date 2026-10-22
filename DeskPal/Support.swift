@@ -8,6 +8,7 @@ enum Config {
   static let agentURL = URL(string: "https://\(info("DeskPalVoiceHost"))/api/agent")!
   static let readerURL = URL(string: "https://\(info("DeskPalReaderHost"))")!
   static let macURL = URL(string: "http://\(info("DeskPalMacHost")):8765")!   // Head Spaces (mac/HeadSpaces.swift), same Wi-Fi
+  static let macHelperURL = URL(string: "http://\(info("DeskPalMacHost")):8737")!   // desk-voice's mac/deskpal-mac.py (dictation)
   static let voiceKey = info("DeskPalVoiceKey")
   static let readerKey = info("DeskPalReaderKey")
 
@@ -123,6 +124,13 @@ enum Sounds {
   static let voice: AVSpeechSynthesisVoice? = AVSpeechSynthesisVoice.speechVoices()
     .filter { $0.language.hasPrefix("en") }
     .max { a, b in (a.quality.rawValue, a.language == "en-US" ? 1 : 0) < (b.quality.rawValue, b.language == "en-US" ? 1 : 0) }
+  // Every English voice installed, best first, for the pager's voice picker.
+  static var englishVoices: [AVSpeechSynthesisVoice] {
+    AVSpeechSynthesisVoice.speechVoices()
+      .filter { $0.language.hasPrefix("en") && !$0.voiceTraits.contains(.isNoveltyVoice) }
+      .sorted { ($0.quality.rawValue, $1.name) > ($1.quality.rawValue, $0.name) }
+  }
+  var voice = Speaker.voice
 
   override init() {
     super.init()
@@ -135,7 +143,7 @@ enum Sounds {
   @discardableResult
   func say(_ text: String, rate: Float = AVSpeechUtteranceDefaultSpeechRate) async -> Bool {
     let u = AVSpeechUtterance(string: text)
-    u.voice = Self.voice
+    u.voice = voice
     u.rate = rate
     return await withCheckedContinuation { c in
       waiting[ObjectIdentifier(u)] = c

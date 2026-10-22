@@ -17,6 +17,7 @@ import Observation
   private(set) var battery: Int?
   private(set) var worn: Bool?
   private(set) var link: String?          // Bluetooth link and version check, e.g. "connected · Compatible"
+  private(set) var linkState: LinkState?
   private(set) var session = "Not started"
   private(set) var inputs = "Off"
   private(set) var motion = "Off"
@@ -112,6 +113,7 @@ import Observation
   // A session only starts on glasses that are linked and compatible ("no eligible device" otherwise).
   private func setLink(_ state: LinkState, _ compatibility: Compatibility) {
     let now = "\(state) · \(compatibility.displayString)"
+    linkState = state
     guard now != link else { return }
     link = now
     log("Glasses link: \(now)")

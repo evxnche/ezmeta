@@ -50,6 +50,9 @@ struct DeskPalApp: App {
     glasses.wantsSpeech = wakeWord
     pal.onReadArticles = { [weak self] in self?.startReading() }
     pager.isBusy = { [weak self] in self?.pal.busy ?? false }
+    pager.isLive = { [weak self] in self?.glasses.linkState == .connected && self?.glasses.worn != false }
+    pager.onAsk = { [weak self] in self?.talk(replyTo: $0) }
+    pal.onAnswered = { [weak self] in self?.pager.answered() }
     pager.willSpeak = { [weak self] in self?.holdReading() }
     pager.didSpeak = { [weak self] in self?.releaseReading() }
     posture.isBusy = { [weak self] in (self?.pal.busy ?? false) || (self?.reader.reading ?? false) }
@@ -74,15 +77,16 @@ struct DeskPalApp: App {
   }
 
   // "Gigi", a double tap on the glasses, or the Talk button. Again while talking stops it.
-  func talk() {
+  // replyTo: the pager just asked Claude's permission question <id>, and this conversation answers it.
+  func talk(replyTo: String? = nil) {
     if pal.busy {
-      pal.stop()
+      if replyTo == nil { pal.stop() }
       return
     }
     holdReading()
     glasses.wantsSpeech = false   // the glasses' mic is the conversation's now, and the answer can't wake it
     Task {
-      await pal.talk()
+      await pal.talk(replyTo: replyTo)
       glasses.wantsSpeech = wakeWord
       releaseReading()
     }

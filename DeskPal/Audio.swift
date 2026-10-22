@@ -14,13 +14,6 @@ import Foundation
   private var keepAlivePlayer: AVAudioPlayer?
   private let session = AVAudioSession.sharedInstance()
 
-  var keepAlive = UserDefaults.standard.object(forKey: "keepAlive") as? Bool ?? true {
-    didSet {
-      UserDefaults.standard.set(keepAlive, forKey: "keepAlive")
-      updateKeepAlive()
-    }
-  }
-
   func use(_ next: Mode) {
     let leaving = mode
     mode = next
@@ -62,17 +55,14 @@ import Foundation
             r.outputs.map { "out: \($0.portName) (\($0.portType.rawValue))" }).joined(separator: ", ")
   }
 
+  // Always on: the wake word, pager and posture nudge only work while the app stays alive in your pocket.
   private func updateKeepAlive() {
-    if keepAlive {
-      if keepAlivePlayer == nil {
-        keepAlivePlayer = try? AVAudioPlayer(data: Sounds.silence)
-        keepAlivePlayer?.numberOfLoops = -1
-        keepAlivePlayer?.volume = 0
-      }
-      if keepAlivePlayer?.isPlaying == false { keepAlivePlayer?.play() }
-    } else {
-      keepAlivePlayer?.stop()
+    if keepAlivePlayer == nil {
+      keepAlivePlayer = try? AVAudioPlayer(data: Sounds.silence)
+      keepAlivePlayer?.numberOfLoops = -1
+      keepAlivePlayer?.volume = 0
     }
+    if keepAlivePlayer?.isPlaying == false { keepAlivePlayer?.play() }
   }
 }
 

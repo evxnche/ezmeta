@@ -1,11 +1,12 @@
 # Desk Pal for Ray-Ban Meta
 
-An iPhone app that puts five things in your Ray-Ban Meta glasses, using Meta's Wearables Device Access
+An iPhone app that puts six things in your Ray-Ban Meta glasses, using Meta's Wearables Device Access
 Toolkit (1.0.1):
 
-1. **Desk Pal on the go** — "Hey Meta, start Desk Pal" (or a tap on the glasses, or the Talk button),
-   a chime, then talk. Same brain as the desk board: desk-voice `/api/glasses` (web search, weather,
-   Noty notes, limits, Spanish practice). After an answer it listens 5 s for a reply.
+1. **Desk Pal on the go** — say "Gigi" (or double tap the glasses, or press Talk), a chime, then talk.
+   The glasses' own speech recognition (Meta's Speech, beta) listens for "Gigi" while the app runs.
+   Same brain as the desk board: desk-voice `/api/glasses` (web search, weather, Noty notes, limits,
+   Spanish practice). After an answer it listens 5 s for a reply.
 2. **Agent pager** — Claude Code / Codex alerts from the Mac (`desk-voice/mac/deskpal-notify.py` →
    `/api/agent`) are polled every 20 s and spoken.
 3. **Voice notes** — "Note: …" appends a line to the **Inbox** note in Noty; "Add … to my tasks"
@@ -15,10 +16,17 @@ Toolkit (1.0.1):
    finished or skipped articles aren't read again.
 5. **Posture nudge** — head tilt from the glasses' accelerometer (Meta's Motion, beta). Calibrate once
    looking straight ahead; 20 minutes of looking down gets a chime and a reminder.
+6. **Mac Spaces** — a quick head turn left or right switches Mac Spaces like a four-finger swipe
+   (gyroscope, 30 Hz). The phone calls Head Spaces on the Mac (`mac/HeadSpaces.swift`, port 8765,
+   same Wi-Fi), which presses Ctrl+←/→. Build it with
+   `swiftc -O mac/HeadSpaces.swift -o ~/.claude/deskpal/headspaces`, copy `mac/com.evan.headspaces.plist`
+   to `~/Library/LaunchAgents`, and allow the binary in Privacy & Security → Accessibility.
 
 The phone runs everything; the glasses are mic, speakers, touchpad and motion sensor. "Keep running in
 background" plays silence so iOS keeps the app alive in your pocket (fine for a personal build; the App
 Store wouldn't allow it).
+
+Setting it up from zero on your own Mac, servers and Apple ID: [HANDOVER.md](HANDOVER.md).
 
 ## Build
 
@@ -33,15 +41,18 @@ xcodebuild -project DeskPal.xcodeproj -scheme DeskPal -destination 'id=<iPhone U
 xcrun devicectl device install app --device <iPhone UDID> ~/Developer/ezmeta-dd/Build/Products/Debug-iphoneos/DeskPal.app
 ```
 
-`Config/Secrets.xcconfig` (not committed; see `Secrets.example.xcconfig`) holds `VOICE_KEY` and
-`READER_KEY`. Signing uses a free Apple ID team, so the app must be reinstalled every 7 days.
+`Config/Secrets.xcconfig` (not committed; see `Secrets.example.xcconfig`) holds the bundle ID and team
+(`BUNDLE_ID`, `TEAM_ID`), the servers' host names (`VOICE_HOST`, `READER_HOST`, `MAC_HOST`) and keys
+(`VOICE_KEY`, `READER_KEY`). Signing uses a free Apple ID team, so the app must be reinstalled every
+7 days.
 
 ## One-time setup on the phone
 
 1. Meta AI app → your glasses → Developer Mode on.
 2. Open Desk Pal → **Connect glasses** → approve in Meta AI.
-3. For "Hey Meta, start Desk Pal", touch input and posture: in the Wearables Developer Center
-   (wearables.developer.meta.com) create a project with bundle ID `com.evancheriyan.deskpal`, app name
-   **Desk Pal**, and turn on Voice Invocation, Inputs and Motion.
+3. For touch input, posture and head switching: in the Wearables Developer Center
+   (wearables.developer.meta.com) create a project with your `BUNDLE_ID`, app name **Desk Pal**, and
+   turn on Inputs and Motion.
+4. Leave "Start when I say Gigi" on; Meta AI asks once for the glasses' microphone.
 
 In Developer Mode only one third-party app can be registered with Meta AI at a time.

@@ -47,6 +47,7 @@ import Observation
       if let p = answer.practice { practicing = p }
       if !answer.heard.isEmpty && answer.forget == false { history.append((answer.heard, answer.reply, Date())) }
       status = .speaking
+      log("Playing \(answer.audio.count / 1000) KB, \(AudioRoute.shared.routeDescription)")
       await player.play(answer.audio)
       if answer.action == "read_articles" {
         onReadArticles?()

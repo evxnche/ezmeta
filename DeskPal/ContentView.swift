@@ -13,6 +13,7 @@ struct ContentView: View {
         readerSection
         pagerSection
         postureSection
+        headSwitchSection
         Section("Log") {
           ForEach(Array(Log.shared.lines.suffix(30).reversed().enumerated()), id: \.offset) { _, line in
             Text(line).font(.caption.monospaced()).foregroundStyle(.secondary)
@@ -33,8 +34,8 @@ struct ContentView: View {
       row("Status", app.glasses.registration.description)
       row("Glasses", [app.glasses.deviceName, app.glasses.battery.map { "\($0)%" },
                       app.glasses.worn.map { $0 ? "on your face" : "off" }].compactMap { $0 }.joined(separator: " · "))
+      row("Link", app.glasses.link ?? "no glasses seen")
       row("Session", app.glasses.session)
-      row("Hey Meta", app.glasses.voice)
       row("Touch input", app.glasses.inputs)
       Toggle("Keep running in background", isOn: $keepAlive)
         .onChange(of: keepAlive) { AudioRoute.shared.keepAlive = keepAlive }
@@ -48,9 +49,14 @@ struct ContentView: View {
           .frame(maxWidth: .infinity, minHeight: 44)
       }
       .buttonStyle(.borderedProminent)
+      Toggle("Start when I say \"Gigi\"", isOn: Bindable(app).wakeWord)
+      if app.wakeWord {
+        row("Glasses", app.glasses.speech)
+        row("Last heard", app.glasses.lastHeard)
+      }
       if !app.pal.heard.isEmpty { row("You", app.pal.heard) }
       if !app.pal.reply.isEmpty { row("Pal", app.pal.reply) }
-      Text("Say \"Hey Meta, start Desk Pal\". Try: \"Note: buy solder\", \"Add call the bank to my tasks\", \"What's on my plan?\", \"Read my articles\".")
+      Text("Say \"Gigi\", then after the chime try: \"Note: buy solder\", \"Add call the bank to my tasks\", \"What's on my plan?\", \"Read my articles\".")
         .font(.footnote).foregroundStyle(.secondary)
     }
   }
@@ -92,6 +98,19 @@ struct ContentView: View {
         row("Looking down", String(format: "%.1f min", app.posture.downMinutes))
         row("Motion", app.glasses.motion)
         Button("Calibrate (look straight ahead)") { Task { await app.posture.calibrate() } }
+      }
+    }
+  }
+
+  private var headSwitchSection: some View {
+    Section("Mac Spaces") {
+      Toggle("Flick head left/right to switch Spaces",
+             isOn: Binding(get: { app.headSwitch.enabled }, set: { app.setHeadSwitch($0) }))
+      if app.headSwitch.enabled {
+        row("Turn speed", app.headSwitch.noGyroscope ? "no gyroscope from glasses"
+            : app.headSwitch.turnRate.map { "\(Int($0))°/s (switches past \(Int(HeadSwitch.flick)))" } ?? "waiting for glasses")
+        row("Last", app.headSwitch.last)
+        row("Motion", app.glasses.motion)
       }
     }
   }

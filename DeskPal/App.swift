@@ -26,14 +26,28 @@ struct DeskPalApp: App {
   let pager = Pager()
   let reader = Reader()
   let posture = Posture()
+  let headSwitch = HeadSwitch()
+  var wakeWord = UserDefaults.standard.object(forKey: "wakeWord") as? Bool ?? true {
+    didSet {
+      UserDefaults.standard.set(wakeWord, forKey: "wakeWord")
+      glasses.wantsSpeech = wakeWord
+    }
+  }
 
   init() {
     AudioRoute.shared.use(.idle)
-    glasses.onTalk = { [weak self] in self?.talk() }
     glasses.onInput = { [weak self] in self?.input($0) }
-    glasses.onMotion = { [weak self] a, t in self?.posture.feed(accelerometer: a, timestampNs: t) }
-    glasses.onWorn = { [weak self] in self?.posture.worn = $0 }
-    glasses.wantsMotion = posture.enabled
+    glasses.onMotion = { [weak self] a, w, t in
+      self?.posture.feed(accelerometer: a, timestampNs: t)
+      self?.headSwitch.feed(accelerometer: a, gyroscope: w, timestampNs: t)
+    }
+    glasses.onWorn = { [weak self] in
+      self?.posture.worn = $0
+      self?.headSwitch.worn = $0
+    }
+    updateMotion()
+    glasses.onHeard = { [weak self] in self?.heard($0) }
+    glasses.wantsSpeech = wakeWord
     pal.onReadArticles = { [weak self] in self?.startReading() }
     pager.isBusy = { [weak self] in self?.pal.busy ?? false }
     pager.willSpeak = { [weak self] in self?.holdReading() }
@@ -45,21 +59,52 @@ struct DeskPalApp: App {
 
   func setPosture(_ on: Bool) {
     posture.enabled = on
-    glasses.wantsMotion = on
+    updateMotion()
     if on && !posture.calibrated { Task { await posture.calibrate() } }
   }
 
-  // "Hey Meta, start Desk Pal", a tap on the glasses, or the Talk button. Again while talking stops it.
+  func setHeadSwitch(_ on: Bool) {
+    headSwitch.enabled = on
+    updateMotion()
+  }
+
+  // Head switching needs 30 samples a second to catch a quick turn; posture alone is fine with 5.
+  private func updateMotion() {
+    glasses.motionHz = headSwitch.enabled ? 30 : posture.enabled ? 5 : nil
+  }
+
+  // "Gigi", a double tap on the glasses, or the Talk button. Again while talking stops it.
   func talk() {
     if pal.busy {
       pal.stop()
       return
     }
     holdReading()
+    glasses.wantsSpeech = false   // the glasses' mic is the conversation's now, and the answer can't wake it
     Task {
       await pal.talk()
+      glasses.wantsSpeech = wakeWord
       releaseReading()
     }
+  }
+
+  // Anything the glasses hear with "Gigi" in it starts a conversation: the desk board's wake word.
+  // Meta's recognizer can't be told the word and writes it many ways ("didi", "giju", "jiji",
+  // "gee gee", "juju"), so match the sound: g/j/d/z, an "ee", g/j/d/z, any vowel, or g/j "oo" g/j "oo".
+  // Whole words only (a short pair counts as one, for "gee gee"), so "eggs", "dad" and "dude" don't count.
+  private static let wakeWords = ["gg", "g g"]
+  private static let wakeSound = #/[gjdz][iey]{1,2}[gjdz][aeiouy]{1,2}|[gj]u[gj]u/#
+  private var lastWake = Date.distantPast
+  private func heard(_ text: String) {
+    let split = text.lowercased().map { $0.isLetter ? $0 : " " }.split(separator: " ").map { String($0) }
+    let words = " " + split.joined(separator: " ") + " "
+    let pairs = zip(split, split.dropFirst()).filter { $0.count <= 3 && $1.count <= 3 }.map { $0 + $1 }
+    let sounds = (split + pairs).contains { $0.wholeMatch(of: Self.wakeSound) != nil }
+    guard sounds || Self.wakeWords.contains(where: { words.contains(" \($0) ") }), !pal.busy,
+          Date().timeIntervalSince(lastWake) > 3 else { return }
+    lastWake = Date()
+    log("Heard: \(text)")
+    talk()
   }
 
   func startReading() {

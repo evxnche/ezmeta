@@ -4,11 +4,16 @@ import Observation
 
 // Where the app talks to, and its keys (from Config/Secrets.xcconfig via Info.plist).
 enum Config {
-  static let glassesURL = URL(string: "https://desk-voice.vercel.app/api/glasses")!
-  static let agentURL = URL(string: "https://desk-voice.vercel.app/api/agent")!
-  static let readerURL = URL(string: "https://reader-inbox.vercel.app")!
-  static let voiceKey = Bundle.main.object(forInfoDictionaryKey: "DeskPalVoiceKey") as? String ?? ""
-  static let readerKey = Bundle.main.object(forInfoDictionaryKey: "DeskPalReaderKey") as? String ?? ""
+  static let glassesURL = URL(string: "https://\(info("DeskPalVoiceHost"))/api/glasses")!
+  static let agentURL = URL(string: "https://\(info("DeskPalVoiceHost"))/api/agent")!
+  static let readerURL = URL(string: "https://\(info("DeskPalReaderHost"))")!
+  static let macURL = URL(string: "http://\(info("DeskPalMacHost")):8765")!   // Head Spaces (mac/HeadSpaces.swift), same Wi-Fi
+  static let voiceKey = info("DeskPalVoiceKey")
+  static let readerKey = info("DeskPalReaderKey")
+
+  private static func info(_ key: String) -> String {
+    Bundle.main.object(forInfoDictionaryKey: key) as? String ?? ""
+  }
 
   static func url(_ base: URL, _ query: [String: String]) -> URL {
     var c = URLComponents(url: base, resolvingAgainstBaseURL: false)!
@@ -75,12 +80,19 @@ enum Sounds {
 
   func play(_ data: Data) async {
     stop()
-    guard let p = try? AVAudioPlayer(data: data) else { return }
+    let p: AVAudioPlayer
+    do { p = try AVAudioPlayer(data: data) } catch {
+      log("Player: \(error.localizedDescription)")
+      return
+    }
     player = p
     p.delegate = self
     await withCheckedContinuation { c in
       done = c
-      if !p.play() { finish() }
+      if !p.play() {
+        log("Player: play() refused")
+        finish()
+      }
     }
   }
 

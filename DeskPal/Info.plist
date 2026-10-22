@@ -49,6 +49,12 @@
 	<string>$(VOICE_KEY)</string>
 	<key>DeskPalReaderKey</key>
 	<string>$(READER_KEY)</string>
+	<key>DeskPalVoiceHost</key>
+	<string>$(VOICE_HOST)</string>
+	<key>DeskPalReaderHost</key>
+	<string>$(READER_HOST)</string>
+	<key>DeskPalMacHost</key>
+	<string>$(MAC_HOST)</string>
 	<!-- audio: the glasses mic, speaking replies and articles, and staying awake in your pocket for the pager and posture. -->
 	<key>UIBackgroundModes</key>
 	<array>
@@ -68,6 +74,12 @@
 	<string>Desk Pal connects to your Meta glasses over Bluetooth.</string>
 	<key>NSLocalNetworkUsageDescription</key>
 	<string>This lets your phone find and connect to your glasses over Wi-Fi.</string>
+	<!-- Plain http to Head Spaces on the Mac (MAC_HOST). -->
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<key>NSAllowsLocalNetworking</key>
+		<true/>
+	</dict>
 	<key>NSBonjourServices</key>
 	<array>
 		<string>_bonjour._tcp</string>

@@ -1,11 +1,16 @@
-// Head Spaces: the Mac end of Desk Pal's head-flick gesture. Listens on the LAN for
+// Head Spaces: the Mac end of Desk Pal's head gestures. Listens on the LAN for
 //   GET /space/left?k=KEY   or   GET /space/right?k=KEY
 // from the phone and presses Ctrl+← / Ctrl+→ (Mission Control's "Move left/right a space"),
-// the same switch a four-finger swipe does. KEY is desk-voice's key in ~/.claude/deskpal/key.
+// the same switch a four-finger swipe does; and for
+//   GET /scroll?v=SPEED&k=KEY
+// (pixels a second, + = down, 0 = stop) and scrolls the window under the pointer at that speed.
+// KEY is desk-voice's key in ~/.claude/deskpal/key.
 //
 // Build:  swiftc -O mac/HeadSpaces.swift -o ~/.claude/deskpal/headspaces
+//         codesign -f -s "Apple Development" -i com.evan.headspaces ~/.claude/deskpal/headspaces
 // Then allow ~/.claude/deskpal/headspaces in System Settings → Privacy & Security → Accessibility
-// (needed to press keys; rebuilding asks again). Runs as the launch agent com.evan.headspaces.
+// (needed to press keys; signing with your certificate keeps that across rebuilds).
+// Runs as the launch agent com.evan.headspaces.
 import ApplicationServices
 import Foundation
 import Network
@@ -26,6 +31,42 @@ func press(_ arrow: CGKeyCode) {
   }
 }
 
+// The phone sends the scroll speed when it changes and every half second while it isn't 0; a 60 Hz
+// timer scrolls at that speed, and stops by itself after a second without hearing from the phone.
+var scrollSpeed = 0.0
+var scrollHeard = Date.distantPast
+var scrollCarry = 0.0                   // pixels owed, less than one
+var scrolling = false
+let scrollTimer = DispatchSource.makeTimerSource(queue: .main)
+scrollTimer.schedule(deadline: .now(), repeating: 1.0 / 60)
+scrollTimer.setEventHandler {
+  guard scrollSpeed != 0, Date().timeIntervalSince(scrollHeard) < 1 else {
+    if scrollSpeed != 0 { log("scroll: phone went quiet, stopped") }
+    scrollSpeed = 0
+    scrollCarry = 0
+    scrolling = false
+    scrollTimer.suspend()
+    return
+  }
+  scrollCarry += scrollSpeed / 60
+  let px = Int32(scrollCarry.rounded(.towardZero))
+  guard px != 0 else { return }
+  scrollCarry -= Double(px)
+  // A positive wheel delta scrolls up, so down is negative.
+  CGEvent(scrollWheelEvent2Source: nil, units: .pixel, wheelCount: 1, wheel1: -px, wheel2: 0, wheel3: 0)?
+    .post(tap: .cghidEventTap)
+}
+
+func scroll(_ speed: Double) {
+  if (speed == 0) != (scrollSpeed == 0) { log(speed == 0 ? "scroll: stop" : "scroll: start") }
+  scrollSpeed = max(-3000, min(3000, speed))
+  scrollHeard = Date()
+  if scrollSpeed != 0 && !scrolling {
+    scrolling = true
+    scrollTimer.resume()
+  }
+}
+
 func handle(_ requestLine: String) -> String {
   // "GET /space/left?k=… HTTP/1.1"
   let parts = requestLine.split(separator: " ")
@@ -34,6 +75,12 @@ func handle(_ requestLine: String) -> String {
   switch c.path {
   case "/space/left": press(123)
   case "/space/right": press(124)
+  case "/scroll":
+    guard let v = c.queryItems?.first(where: { $0.name == "v" })?.value.flatMap(Double.init) else {
+      return "400 Bad Request"
+    }
+    scroll(v)
+    return AXIsProcessTrusted() ? "200 OK" : "503 Service Unavailable"
   default: return "404 Not Found"
   }
   log(c.path)

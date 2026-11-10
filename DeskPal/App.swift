@@ -27,6 +27,7 @@ struct DeskPalApp: App {
   let reader = Reader()
   let posture = Posture()
   let headSwitch = HeadSwitch()
+  let headScroll = HeadScroll()
   var wakeWord = UserDefaults.standard.object(forKey: "wakeWord") as? Bool ?? true {
     didSet {
       UserDefaults.standard.set(wakeWord, forKey: "wakeWord")
@@ -40,10 +41,12 @@ struct DeskPalApp: App {
     glasses.onMotion = { [weak self] a, w, t in
       self?.posture.feed(accelerometer: a, timestampNs: t)
       self?.headSwitch.feed(accelerometer: a, gyroscope: w, timestampNs: t)
+      self?.headScroll.feed(accelerometer: a, timestampNs: t)
     }
     glasses.onWorn = { [weak self] in
       self?.posture.worn = $0
       self?.headSwitch.worn = $0
+      self?.headScroll.worn = $0
     }
     updateMotion()
     glasses.onHeard = { [weak self] in self?.heard($0) }
@@ -71,9 +74,16 @@ struct DeskPalApp: App {
     updateMotion()
   }
 
-  // Head switching needs 30 samples a second to catch a quick turn; posture alone is fine with 5.
+  func setHeadScroll(_ on: Bool) {
+    headScroll.enabled = on
+    updateMotion()
+    if on && !headScroll.calibrated { Task { await headScroll.calibrate() } }
+  }
+
+  // Head switching needs 30 samples a second to catch a quick turn, and scrolling to follow the head
+  // smoothly; posture alone is fine with 5.
   private func updateMotion() {
-    glasses.motionHz = headSwitch.enabled ? 30 : posture.enabled ? 5 : nil
+    glasses.motionHz = headSwitch.enabled || headScroll.enabled ? 30 : posture.enabled ? 5 : nil
   }
 
   // "Gigi", a double tap on the glasses, or the Talk button. Again while talking stops it.

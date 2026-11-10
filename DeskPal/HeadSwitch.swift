@@ -16,7 +16,7 @@ import simd
   private(set) var last = "Nothing yet"
   var worn = true
 
-  static let flick = 150.0                // degrees a second
+  static let flick = 100.0                // degrees a second
   private static let lockoutNs: Int64 = 800_000_000
 
   private var gravity: SIMD3<Float>?

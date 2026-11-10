@@ -3,7 +3,7 @@ import SwiftUI
 // Everything Desk Pal can do. Spoken skills start with "Gigi" (or a double tap, or Talk); hands-free
 // ones run on their own and have their switch here.
 struct Skill: Identifiable {
-  enum Switch { case pager, posture, headSwitch }
+  enum Switch { case pager, posture, headSwitch, headScroll }
 
   let title: String
   let symbol: String
@@ -43,6 +43,8 @@ struct Skill: Identifiable {
           summary: "A chime and a reminder after \(Int(Posture.nudgeAfter)) minutes of looking down.", toggle: .posture),
     Skill(title: "Mac Spaces", symbol: "rectangle.split.3x1.fill",
           summary: "Flick your head left or right to switch Spaces on your Mac.", toggle: .headSwitch),
+    Skill(title: "Mac scroll", symbol: "arrow.up.and.down",
+          summary: "Tilt your head down or up a little to scroll on your Mac; tilt further to go faster.", toggle: .headScroll),
   ]
 
   static let all = spoken + handsFree
@@ -68,11 +70,14 @@ struct SkillsView: View {
             if skill.toggle == .posture && app.posture.enabled {
               Button("Calibrate Posture") { Task { await app.posture.calibrate() } }
             }
+            if skill.toggle == .headScroll && app.headScroll.enabled {
+              Button("Calibrate Scroll") { Task { await app.headScroll.calibrate() } }
+            }
           }
         } header: {
           Text("Hands-free")
         } footer: {
-          Text("Calibrate while looking straight ahead. Mac Spaces needs Head Spaces running on your Mac, on the same Wi-Fi.")
+          Text("Calibrate while looking straight ahead. Mac Spaces and Mac scroll need Head Spaces running on your Mac, on the same Wi-Fi. Scroll moves the window under the pointer, and stops when you look down at the keyboard.")
         }
 
         Section("Glasses controls") {
@@ -91,6 +96,7 @@ struct SkillsView: View {
     case .pager: Bindable(app.pager).enabled
     case .posture: Binding(get: { app.posture.enabled }, set: { app.setPosture($0) })
     case .headSwitch: Binding(get: { app.headSwitch.enabled }, set: { app.setHeadSwitch($0) })
+    case .headScroll: Binding(get: { app.headScroll.enabled }, set: { app.setHeadScroll($0) })
     }
   }
 }

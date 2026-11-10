@@ -144,7 +144,7 @@ struct DiagnosticsView: View {
         Text("The glasses' own speech recognition. If \u{201C}Gigi\u{201D} doesn't start Desk Pal, check how it was written here.")
       }
 
-      if app.posture.enabled || app.headSwitch.enabled {
+      if app.posture.enabled || app.headSwitch.enabled || app.headScroll.enabled {
         Section("Motion") {
           if app.posture.enabled {
             row("Head tilt", app.posture.tilt.map { "\(Int($0))°" } ?? "Waiting for glasses")
@@ -154,6 +154,11 @@ struct DiagnosticsView: View {
             row("Turn speed", app.headSwitch.noGyroscope ? "No gyroscope from glasses"
                 : app.headSwitch.turnRate.map { "\(Int($0))°/s (switches past \(Int(HeadSwitch.flick)))" } ?? "Waiting for glasses")
             row("Last switch", app.headSwitch.last)
+          }
+          if app.headScroll.enabled {
+            row("Scroll tilt", !app.headScroll.calibrated ? "Not calibrated"
+                : app.headScroll.pitch.map { "\(Int($0))° (scrolls past \(Int(HeadScroll.deadZone)))" } ?? "Waiting for glasses")
+            row("Scroll", app.headScroll.speed == 0 ? app.headScroll.last : "\(abs(app.headScroll.speed)) px/s \(app.headScroll.speed > 0 ? "down" : "up")")
           }
         }
       }

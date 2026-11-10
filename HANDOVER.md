@@ -104,7 +104,8 @@ In Developer Mode only one third-party app can be registered with Meta AI at a t
 
 ## 7. Optional: Mac extras
 
-**Head Spaces** (flick your head left/right to switch Mac Spaces; phone and Mac on the same Wi-Fi):
+**Head Spaces** (flick your head left/right to switch Mac Spaces, tilt it down/up to scroll; phone and Mac
+on the same Wi-Fi):
 
 1. Set `MAC_HOST` in `Config/Secrets.xcconfig` to the output of the line below, then redo step 5.3:
 
@@ -118,13 +119,15 @@ In Developer Mode only one third-party app can be registered with Meta AI at a t
    mkdir -p ~/.claude/deskpal
    printf '%s' '<VOICE_KEY>' > ~/.claude/deskpal/key
    swiftc -O mac/HeadSpaces.swift -o ~/.claude/deskpal/headspaces
+   codesign -f -s "Apple Development" -i com.evan.headspaces ~/.claude/deskpal/headspaces
    sed "s#/Users/evancheriyan#$HOME#" mac/com.evan.headspaces.plist > ~/Library/LaunchAgents/com.evan.headspaces.plist
    launchctl load ~/Library/LaunchAgents/com.evan.headspaces.plist
    ```
 
 3. System Settings → Privacy & Security → Accessibility → **+** → `~/.claude/deskpal/headspaces`
    (press Cmd+Shift+G to type the path).
-4. In Desk Pal, Skills tab → turn on **Mac Spaces**.
+4. In Desk Pal, Skills tab → turn on **Mac Spaces** and/or **Mac scroll** (scroll asks you to look at the
+   screen, then tilt down a little, to calibrate).
 
 **Agent pager** (if you use Claude Code): Desk Pal speaks "done" / "needs you" alerts from Claude
 Code. Install `mac/deskpal-notify.py` from your desk-voice repo as its `README.md` describes, pointed at

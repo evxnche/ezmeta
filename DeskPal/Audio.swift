@@ -49,6 +49,17 @@ import Foundation
     return false
   }
 
+  // Bluetooth takes a moment to let go of the glasses mic after a conversation, and the glasses can't
+  // listen for "Gigi" until it has: wait for HFP to leave the route, then a second more.
+  func glassesMicReleased(timeout: Double = 4) async {
+    let start = Date()
+    while Date().timeIntervalSince(start) < timeout,
+          session.currentRoute.inputs.contains(where: { $0.portType == .bluetoothHFP }) {
+      try? await Task.sleep(for: .milliseconds(150))
+    }
+    try? await Task.sleep(for: .seconds(1))
+  }
+
   var routeDescription: String {
     let r = session.currentRoute
     return (r.inputs.map { "in: \($0.portName) (\($0.portType.rawValue))" } +

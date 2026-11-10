@@ -97,17 +97,19 @@ struct DeskPalApp: App {
     glasses.wantsSpeech = false   // the glasses' mic is the conversation's now, and the answer can't wake it
     Task {
       await pal.talk(replyTo: replyTo)
-      glasses.wantsSpeech = wakeWord
       releaseReading()
+      await AudioRoute.shared.glassesMicReleased()
+      if !pal.busy { glasses.wantsSpeech = wakeWord }
     }
   }
 
   // Anything the glasses hear with "Gigi" in it starts a conversation: the desk board's wake word.
   // Meta's recognizer can't be told the word and writes it many ways ("didi", "giju", "jiji",
-  // "gee gee", "juju"), so match the sound: g/j/d/z, an "ee", g/j/d/z, any vowel, or g/j "oo" g/j "oo".
+  // "gee gee", "juju", "jiggy", "kiki", "gigis"), so match the sound: g/j/d/z/k (maybe doubled), an "ee",
+  // g/j/d/z/k (maybe doubled), any vowel, maybe an "s"; or g/j "oo" g/j "oo".
   // Whole words only (a short pair counts as one, for "gee gee"), so "eggs", "dad" and "dude" don't count.
   private static let wakeWords = ["gg", "g g"]
-  private static let wakeSound = #/[gjdz][iey]{1,2}[gjdz][aeiouy]{1,2}|[gj]u[gj]u/#
+  private static let wakeSound = #/[gjdzk]{1,2}[iey]{1,2}[gjdzk]{1,2}[aeiouy]{1,2}s?|[gj]u[gj]u/#
   private var lastWake = Date.distantPast
   private func heard(_ text: String) {
     let split = text.lowercased().map { $0.isLetter ? $0 : " " }.split(separator: " ").map { String($0) }

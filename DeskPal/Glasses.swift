@@ -30,7 +30,11 @@ import Observation
   var onHeard: (String) -> Void = { _ in }
 
   var wantsSpeech = false {
-    didSet { if wantsSpeech != oldValue { Task { await updateSpeech() } } }
+    didSet {
+      guard wantsSpeech != oldValue else { return }
+      if wantsSpeech { speechResumed = Date() }
+      Task { await updateSpeech() }
+    }
   }
 
   var motionHz: Int? {                    // 5 or 30 samples a second; nil = off
@@ -45,6 +49,7 @@ import Observation
   private var speechErrors = 0              // since it last started listening
   private var speechWatchdog: Task<Void, Never>?
   private var lastTranscript = Date()
+  private var speechResumed = Date.distantPast   // wanted again after a conversation
   private var refreshingSpeech = false
   private var motionCapabilityHz: Int?
   private var tokens: [any AnyListenerToken] = []
@@ -300,8 +305,10 @@ import Observation
     guard wantsSpeech, let s = deviceSession, s.state == .started else { return }
     guard let sp = speechCapability else { return await updateSpeech() }
     // It can say it's listening while no text comes through any more: after a quiet minute, restart it
-    // (speechChanged starts it again once it has stopped).
-    if sp.state == .started, Date().timeIntervalSince(lastTranscript) > 60 {
+    // (speechChanged starts it again once it has stopped). In the minute after a conversation, when it
+    // most often comes back deaf, 15 quiet seconds is enough.
+    let quiet: Double = Date().timeIntervalSince(speechResumed) < 60 ? 15 : 60
+    if sp.state == .started, Date().timeIntervalSince(lastTranscript) > quiet {
       refreshingSpeech = true
       lastTranscript = Date()
       sp.stop()
